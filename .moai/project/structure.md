@@ -62,9 +62,17 @@ gostop/
 
 #### src/lib/
 - **websocket/**:
-  - `client.ts`: WebSocket 클라이언트 구현
+  - `client.ts`: Socket.IO 클라이언트 싱글톤
   - `types.ts`: WebSocket 메시지 타입 정의
-  - `events.ts`: 이벤트 핸들러
+  - `events.ts`: 이벤트 핸들러 구현
+  - `reconnection.ts`: 자동 재연결 관리
+  - `auth.ts`: JWT 인증 통합
+  - `validation.ts`: 입력 데이터 검증
+  - `monitoring.ts`: 성능 모니터링
+- **game/ (SPEC-GAME-001)**:
+  - `core/`: 게임 로직 코어 모듈
+  - `types/`: 게임 타입 정의
+  - `constants/`: 게임 상수
 - **utils.ts**: 일반 유틸리티 함수 (날짜 포맷팅, 숫자 포맷팅 등)
 - **constants.ts**: 애플리케이션 상수 (게임 규칙, 점수 계산 등)
 
@@ -75,8 +83,9 @@ gostop/
 - `api.ts`: API 관련 타입 정의
 
 #### src/hooks/
+- `useSocket.ts`: Socket.IO 연결 관리 훅
+- `useRoomEvents.ts`: 게임 방 이벤트 훅
 - `useGame.ts`: 게임 상태 관리 훅
-- `useWebSocket.ts`: WebSocket 연결 관리 훅
 - `useUser.ts`: 사용자 정보 관리 훅
 - `useAvatar.ts`: 아바트 관리 훅
 
@@ -88,6 +97,7 @@ gostop/
 
 #### src/store/
 - `gameStore.ts`: 게임 상태 저장소 (Zustand)
+- `socketStore.ts`: Socket.IO 연결 상태 저장소
 - `userStore.ts`: 사용자 상태 저장소
 - `uiStore.ts`: UI 상태 저장소
 

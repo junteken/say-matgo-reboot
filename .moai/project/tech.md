@@ -8,12 +8,18 @@
 - **Tailwind CSS**: 유틸리티 우선의 CSS 프레임워크
 - **Zustand**: 경량 상태 관리 라이브러리
 - **Framer Motion**: 애니메이션 및 인터랙션 라이브러리
+- **Socket.IO**: 실시간 양방향 통신 라이브러리
+- **React Hooks**: 커스텀 훅을 통한 상태 관리
+- **ESLint/Prettier**: 코드 품질 및 포맷팅
 
 ### 백엔드 (서버리스)
 - **Next.js API Routes**: 서버리스 아키텍처
-- **WebSocket**: 실시간 양방향 통신
-- **Vercel**: 배포 및 호스팅 플랫폼
-- **Redis**: 캐싱 및 세션 관리
+- **Socket.IO**: 실시간 양방향 통신
+- **Railway**: 배포 및 호스팅 플랫폼
+- **Redis**: 캐싱 및 Pub/Sub 메시징
+- **Supabase**: 인증 및 파일 저장소
+- **ioredis**: 고성능 Redis 클라이언트
+- **jose**: JWT 토큰 처리 라이브러리
 
 ### 데이터베이스
 - **PostgreSQL**: 주 데이터 저장소
@@ -25,6 +31,8 @@
 - **Prettier**: 코드 포맷팅
 - **Husky**: Git 훅 관리
 - **Playwright**: E2E 테스팅
+- **MoAI-ADK**: AI 개발 워크플로우
+- **Vitest**: 단위 테스팅 프레임워크
 
 ## 프레임워크 선택 및 이유
 
@@ -78,6 +86,9 @@ npm --version   # 9.0.0 이상
 
 # Git 버전 확인
 git --version   # 2.30.0 이상
+
+# Railway CLI 설치 (배포용)
+npm install -g @railway/cli
 ```
 
 ### 프로젝트 초기화
@@ -86,7 +97,7 @@ git --version   # 2.30.0 이상
 npx create-next-app@latest gostop --typescript --tailwind --eslint --app
 
 # 필요한 패키지 설치
-npm install socket.io zustand framer-motion @types/node
+npm install socket.io@4.7.5 zustand@4.4.7 framer-motion@10.16.4 @types/node @types/socket.io ioredis@5.3.2 jose@5.1.0
 
 # 개발 서버 실행
 npm run dev
@@ -106,7 +117,18 @@ npm run dev
   "dependencies": {
     "next": "14.0.4",
     "react": "18.2.0",
-    "typescript": "5.2.2"
+    "typescript": "5.2.2",
+    "socket.io": "4.7.5",
+    "socket.io-client": "4.7.5",
+    "zustand": "4.4.7",
+    "framer-motion": "10.16.4",
+    "ioredis": "5.3.2",
+    "jose": "5.1.0"
+  },
+  "devDependencies": {
+    "@types/socket.io": "3.0.2",
+    "vitest": "1.0.4",
+    "@vitest/coverage-v8": "1.0.4"
   }
 }
 ```

@@ -4,6 +4,79 @@
 
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)을 따릅니다.
 
+## [1.0.1] - 2026-03-03
+
+### 추가된 기능 (Added)
+
+#### 🌐 WebSocket 실시간 멀티플레이어 통신 (SPEC-NET-001)
+
+- **Socket.IO 서버 구현**
+  - Railway 배포를 통한 확장 가능한 아키텍처
+  - Redis Pub/Sub 어댑터를 통한 수평적 확장 지원
+  - JWT 인증 및 Supabase JWKS 통합
+  - 연결 핸드셰이크 및 하트비트 모니터링
+
+- **룸 관리 시스템**
+  - RoomManager 싱글톤 (Map 기반 저장소)
+  - 룸 생애주기 관리 (생성, 참가, 이탈, 파괴)
+  - 플레이어 존재 추적 시스템
+  - 룸 이벤트 핸들러 구현
+
+- **게임 상태 통합**
+  - GameSessionManager (SPEC-GAME-001 통합)
+  - GameStateValidator (CardMatcher 통합)
+  - play_card 이벤트 핸들러
+  - 고/스톱 선언 핸들러
+  - Redis Pub/Sub 상태 브로드캐스팅
+
+- **클라이언트 사이드 구현**
+  - SocketClient 싱글톤
+  - useSocket, useRoomEvents React 훅
+  - socketStore, gameStore Zustand 스토어
+  - ConnectionStatus 컴포넌트
+
+- **고급 기능**
+  - 재연결 후 세션 복원
+  - 관전자 모드 (관전자 전용 접근)
+  - 하트비트/핑 모니터링
+  - 종합적 오류 처리
+  - 속도 제한 미들웨어 (100 요청/분)
+  - E2E 테스트 통합
+
+#### 🔧 인프라 구성
+
+- **Railway 배포 플랫폼 통합**
+  - 환경 변수 관리
+  - 자동 확장 설정
+  - 모니터링 및 로깅
+
+- **Redis 캐싱 시스템**
+  - 게임 세션 캐싱
+  - Pub/Sub 메시징
+  - 세션 상태 동기화
+
+- **JWT 인증 시스템**
+  - Supabase JWKS 통합
+  - 토큰 검증 및 갱신
+  - 인증 미들웨어
+
+### 기술적 개선 (Improved)
+
+- 실시간 통신 성능 최적화
+- 수평적 확장성 강화
+- 네트워크 단절 복구 시스템
+- 모바일 네트워크 대응 능력 향상
+- 전체 시스템 안정성 강화
+
+### 보안 강화 (Security)
+
+- JWT 토큰 검증 강화
+- 속도 제한 미들웨어 적용
+- 입력 데이터 검증 시스템
+- 세션 보안 관리 개선
+
+---
+
 ## [1.0.0] - 2026-02-28
 
 ### 추가된 기능 (Added)
