@@ -1,0 +1,27 @@
+# @MX:NOTE: Railway deployment configuration for WebSocket server
+
+[build]
+# @MX:NOTE: Build command for TypeScript compilation
+build = "npm run build"
+
+# @MX:NOTE: Start command for WebSocket server
+start = "npm start"
+
+# @MX:NOTE: Railway automatically sets PORT environment variable
+# The WebSocket server reads process.env.PORT
+
+[deploy]
+# @MX:NOTE: Number of instances for horizontal scaling
+# Railway auto-scales based on load
+numreplicas = 1
+
+# @MX:NOTE: Health check endpoint (will be implemented in TASK-002)
+# healthcheckPath = "/health"
+
+# @MX:NOTE: Restart policy for resilience
+restart_policy_type = "ON_FAILURE"
+
+# @MX:NOTE: Railway service name
+# Change this to your preferred service name
+# [service.name]
+# value = "say-matgo-websocket"
