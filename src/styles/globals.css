@@ -1,0 +1,128 @@
+/**
+ * Global Styles
+ *
+ * Global CSS with Tailwind directives and custom styles.
+ *
+ * @MX:NOTE: Global styles with Tailwind directives
+ * @MX:SPEC: SPEC-UI-001
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html,
+  body {
+    @apply h-full w-full;
+    @apply bg-gray-900 text-gray-100;
+    @apply antialiased;
+  }
+
+  body {
+    @apply overflow-x-hidden;
+  }
+}
+
+/* Custom component styles */
+@layer components {
+  /* Card base styles */
+  .card {
+    @apply relative cursor-pointer transition-transform duration-200;
+    @apply hover:scale-105 active:scale-95;
+    @apply rounded-lg shadow-md;
+  }
+
+  .card-disabled {
+    @apply opacity-50 cursor-not-allowed;
+    @apply hover:scale-100;
+  }
+
+  .card-selected {
+    @apply ring-2 ring-highlight ring-offset-2;
+    @apply scale-105;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg font-semibold;
+    @apply bg-highlight text-white;
+    @apply hover:bg-highlight/80 active:bg-highlight/60;
+    @apply transition-colors duration-200;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg font-semibold;
+    @apply bg-gray-700 text-gray-100;
+    @apply hover:bg-gray-600 active:bg-gray-500;
+    @apply transition-colors duration-200;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Player area styles */
+  .player-area {
+    @apply p-4 rounded-lg bg-gray-800;
+    @apply shadow-lg border border-gray-700;
+  }
+
+  .player-area-current {
+    @apply ring-2 ring-selected ring-offset-2;
+  }
+}
+
+/* Custom utility styles */
+@layer utilities {
+  /* Card flip utilities */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  /* Responsive card sizes */
+  @media (max-width: 767px) {
+    .card-responsive {
+      @apply w-10 h-14;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .card-responsive {
+      @apply w-12 h-16;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .card-responsive {
+      @apply w-15 h-21;
+    }
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  @apply outline-none ring-2 ring-selected ring-offset-2;
+}
