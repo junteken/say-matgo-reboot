@@ -43,22 +43,28 @@ gostop/
 - **(game)/**: 게임 관련 페이지 그룹
 - **(profile)/**: 프로필 관련 페이지 그룹
 
-#### src/components/
+#### src/components/ (SPEC-UI-001 - 75% 완료)
 - **ui/**: 기본 UI 컴포넌트 (Button, Card, Modal 등)
-- **game/**:
-  - `GameBoard.tsx`: 메인 게임 보드
-  - `Card.tsx`: 카드 컴포넌트
-  - `PlayerArea.tsx`: 플레이어 영역
-  - `GameControls.tsx`: 게임 컨트롤 버튼
-  - `ScoreBoard.tsx`: 점수판
+- **game/**: 게임 보드 컴포넌트
+  - `GameBoard.tsx`: 메인 게임 보드 (🎯 128 테스트 통과)
+  - `GroundArea.tsx`: 바닥 카드 영역 (12슬롯 그리드)
+  - `PlayerArea.tsx`: 플레이어 영역 (🎯 101 테스트 통과)
+  - `ControlPanel.tsx`: 고/스톱 버튼 제어 패널
+  - `ScoreDisplay.tsx`: 점수 표시 (타별 색상 코딩)
+  - `TurnIndicator.tsx`: 턴 표시기 (펄스 애니메이션)
+  - `GameStatus.tsx`: 게임 상태 표시
+- **cards/**: 카드 관련 컴포넌트
+  - `Card.tsx`: 단일 카드 컴포넌트 (🎯 71 테스트 통과)
+  - `CardBack.tsx`: 카드 뒷면 (한국 패턴 디자인)
+  - `HandCards.tsx`: 플레이어 손패 컨테이너
+  - `CapturedCards.tsx`: 캡처된 카드 그리드 (타별 그룹화)
 - **avatar/**:
-  - `Avatar.tsx`: 아바트 메인 컴포넌트
-  - `AvatarCustomizer.tsx`: 아바트 커스터마이징
-  - `AvatarReaction.tsx`: 아바트 표정 반응
+  - `Avatar.tsx`: 플레이어 아바타 (이모지/이미지, 온라인 상태)
 - **common/**:
   - `Header.tsx`: 헤더 컴포넌트
   - `Footer.tsx`: 푸터 컴포넌트
   - `LoadingSpinner.tsx`: 로딩 스피너
+  - `ConnectionStatus.tsx`: 연결 상태 (기존)
 
 #### src/lib/
 - **websocket/**:
@@ -157,26 +163,61 @@ const GameBoard = memo(({ gameState, onMove }) => {
 
 ## 키 파일 위치
 
+### UI 컴포넌트 파일 (SPEC-UI-001)
+- **`src/components/game/GameBoard.tsx`**: 메인 게임 보드 (🎯 128 테스트)
+- **`src/components/game/PlayerArea.tsx`**: 플레이어 영역 (🎯 101 테스트)
+- **`src/components/game/GroundArea.tsx`**: 바닥 카드 영역 (12슬롯)
+- **`src/components/cards/Card.tsx`**: 단일 카드 컴포넌트 (🎯 71 테스트)
+- **`src/components/cards/HandCards.tsx`**: 손패 컨테이너
+- **`src/components/cards/CapturedCards.tsx`**: 캡처된 카드 그리드
+- **`src/components/avatar/Avatar.tsx`**: 플레이어 아바타
+- **`src/components/game/ControlPanel.tsx`**: 고/스톱 제어 패널
+- **`src/components/game/ScoreDisplay.tsx`**: 점수 표시
+- **`src/components/game/TurnIndicator.tsx`**: 턴 표시기
+- **`src/components/game/GameStatus.tsx`**: 게임 상태 표시
+
 ### 핵심 게임 파일
-- **`src/components/game/GameBoard.tsx`**: 메인 게임 보드
-- **`src/lib/gameLogic.ts`**: 게임 로직 구현
-- **`src/lib/websocket/client.ts`**: WebSocket 클라이언트
-- **`src/store/gameStore.ts`**: 게임 상태 저장소
+- **`src/lib/game/core/CardDeck.ts`**: 카드 덱 관리 (SPEC-GAME-001)
+- **`src/lib/game/core/CardMatcher.ts`**: 카드 매칭 로직
+- **`src/lib/game/core/CardScorer.ts`**: 점수 계산
+- **`src/lib/game/core/GoStopSystem.ts`**: 고/스톱 시스템
 
-### 아바트 시스템 파일
-- **`src/components/avatar/Avatar.tsx`**: 아바트 메인 컴포넌트
-- **`src/components/avatar/AvatarReaction.tsx`**: 표정 반응 시스템
-- **`src/services/avatarService.ts`**: 아바트 API 서비스
+### 실시간 통신 파일
+- **`src/lib/websocket/client.ts`**: WebSocket 클라이언트 (SPEC-NET-001)
+- **`src/lib/websocket/types.ts`**: WebSocket 메시지 타입
+- **`src/store/socketStore.ts`**: Socket.IO 상태 저장소
 
-### 인증 및 사용자 파일
-- **`src/app/(auth)/login/page.tsx`**: 로그인 페이지
-- **`src/services/authService.ts`**: 인증 서비스
+### 상태 관리 파일
+- **`src/store/gameStore.ts`**: 게임 상태 저장소 (Zustand)
 - **`src/store/userStore.ts`**: 사용자 상태 저장소
+- **`src/hooks/useGame.ts`**: 게임 상태 훅
 
-### API 레이어 파일
-- **`src/services/gameService.ts`**: 게임 API 서비스
-- **`src/types/api.ts`**: API 타입 정의
-- **`src/lib/apiClient.ts`**: API 클라이언트
+## UI 컴포넌트 상세 구조 (SPEC-UI-001)
+
+### 컴포넌트 계층 구조
+```
+GameBoard (루트)
+├── GroundArea
+│   └── Card
+├── PlayerArea (x2)
+│   ├── Avatar
+│   ├── HandCards
+│   │   └── Card
+│   ├── CapturedCards
+│   │   └── Card
+│   └── ScoreDisplay
+├── ControlPanel
+└── GameStatus
+    ├── TurnIndicator
+    └── ConnectionStatus
+```
+
+### 컴포넌트 통합 상태 관리
+```typescript
+// UI ↔ Store 통합
+gameStore → GameBoard, PlayerArea, ScoreDisplay
+socketStore → ConnectionStatus, GameStatus
+```
 
 ## 모듈 간 의존성 관계
 
@@ -186,10 +227,11 @@ UI Components → Store → Services → WebSocket → Game Logic
 ```
 
 ### 2. 핵심 모듈
-- **Game Logic**: 독립적인 게임 규칙 및 점수 계산 로직
-- **WebSocket**: 실시간 통신을 위한 독립 모듈
-- **Store**: 상태 관리 중심 모듈
+- **Game Logic**: 독립적인 게임 규칙 및 점수 계산 로직 (SPEC-GAME-001)
+- **WebSocket**: 실시간 통신을 위한 독립 모듈 (SPEC-NET-001)
+- **Store**: 상태 관리 중심 모듈 (Zustand)
 - **Services**: API 통신을 담당하는 모듈
+- **UI Components**: 독립적이지만 통합된 React 컴포넌트 (SPEC-UI-001)
 
 ### 3. 의존성 주입 (Dependency Injection)
 ```typescript
@@ -221,5 +263,6 @@ class GameService {
 ---
 
 *문서 생성일: 2026-02-27*
-*최종 업데이트: 2026-02-27*
+*최종 업데이트: 2026-03-04*
 *버전: 1.0.0*
+*UI 컴포넌트 진행: 75% (Phase 0-3 완료, Phase 4-8 진행 중)*

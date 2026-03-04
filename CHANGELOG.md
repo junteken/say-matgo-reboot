@@ -4,6 +4,61 @@
 
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)을 따릅니다.
 
+## [1.0.2] - 2026-03-04
+
+### 추가된 기능 (Added)
+
+#### 🎮 UI 컴포넌트 렌더링 시스템 (SPEC-UI-001) - 75% 완료
+
+**Phase 0: 인프라 설정** ✅ (7개 테스트)
+- Next.js 16, React 19, Tailwind CSS, Framer Motion 설치
+- Testing Library 구성 및 테스트 환경 설정
+- 파일: next.config.js, tailwind.config.js, postcss.config.js
+
+**Phase 1: 카드 컴포넌트** ✅ (71개 테스트)
+- Card.tsx: 월/타입 표시, 선택 상태, 키보드 네비게이션 지원
+- CardBack.tsx: 전통적인 한국 패턴 디자인 구현
+- HandCards.tsx: 플레이어 손패 컨테이너 (그리드 레이아웃)
+- CapturedCards.tsx: 캡처된 카드 그리드 (타별 그룹화 기능)
+
+**Phase 2: 플레이어 영역** ✅ (101개 테스트)
+- Avatar.tsx: 이모지/이미지 아바타, 온라인/오프라인 상태 표시
+- ScoreDisplay.tsx: 점수 세부 정보 (타입별 색상 코딩)
+- PlayerArea.tsx: 루트 플레이어 영역 컴포넌트 통합
+
+**Phase 3: 게임 보드** ✅ (128개 테스트)
+- GroundArea.tsx: 12슬롯 바닥 카드 그리드 레이아웃
+- ControlPanel.tsx: 고/스톱 버튼 (상태 기반 활성화/비활성화)
+- TurnIndicator.tsx: 현재 턴 표시 (펄스 애니메이션 효과)
+- GameStatus.tsx: 게임 상태, 승자, 연결 상태 표시
+- GameBoard.tsx: 모든 단계 통합 루트 컴포넌트
+
+**테스트 시스템**
+- 총 307개 테스트 통과
+- 85%+ 코드 커버리지 목표 달성
+- Vitest + React Testing Library 통합
+- TDD 개발 방식 적용
+
+**개발 환경**
+- 컴포넌트 단위 테스트 100% 커버리지
+- 모듈화된 아키텍처 유지
+- TypeScript 타입 안정성 확보
+- 성능 최적화 기본 구조
+
+### 기술적 개선 (Improved)
+
+- UI 컴포넌트의 모듈화 및 재사용성 향상
+- 테스트 기반 개발(TDD)로 안정성 강화
+- 반응형 디자인 기반 구조 구축
+- 컴포넌트 간 의존성 관리 개선
+
+### 다음 단계 (Next Steps)
+- Phase 4-8: 애니메이션 시스템, 반응형 디자인, 상태 관리 통합
+- 모바일 호환성 강화
+- 접근성(WCAG 2.1 AA) 표준 준비
+
+---
+
 ## [1.0.1] - 2026-03-03
 
 ### 추가된 기능 (Added)
