@@ -43,7 +43,7 @@ gostop/
 - **(game)/**: 게임 관련 페이지 그룹
 - **(profile)/**: 프로필 관련 페이지 그룹
 
-#### src/components/ (SPEC-UI-001 - 75% 완료)
+#### src/components/ (SPEC-UI-001 - 85% 완료)
 - **ui/**: 기본 UI 컴포넌트 (Button, Card, Modal 등)
 - **game/**: 게임 보드 컴포넌트
   - `GameBoard.tsx`: 메인 게임 보드 (🎯 128 테스트 통과)
@@ -60,6 +60,14 @@ gostop/
   - `CapturedCards.tsx`: 캡처된 카드 그리드 (타별 그룹화)
 - **avatar/**:
   - `Avatar.tsx`: 플레이어 아바타 (이모지/이미지, 온라인 상태)
+- **animations/**: 애니메이션 시스템 (Phase 4 완료)
+  - `CardPlayAnimation.tsx`: 카드 플레이 애니메이션 (🎯 20 테스트)
+  - `CardMatchingAnimation.tsx`: 매칭 글로우 애니메이션 (🎯 20 테스트)
+  - `ScoreUpdateAnimation.tsx`: 점수 업데이트 애니메이션 (🎯 20 테스트)
+  - `TurnTransitionAnimation.tsx`: 턴 전환 애니메이션 (🎯 19 테스트)
+  - `GameOverAnimation.tsx`: 게임 종료 애니메이션 (🎯 20 테스트)
+- **responsive/**: 반응형 디자인 (Phase 6 완료)
+  - `ResponsiveContainer.tsx`: 반응형 레이아웃 컨테이너 (🎯 92 테스트)
 - **common/**:
   - `Header.tsx`: 헤더 컴포넌트
   - `Footer.tsx`: 푸터 컴포넌트
@@ -94,6 +102,7 @@ gostop/
 - `useGame.ts`: 게임 상태 관리 훅
 - `useUser.ts`: 사용자 정보 관리 훅
 - `useAvatar.ts`: 아바트 관리 훅
+- `useBreakpoint.tsx`: 브레이크포인트 감지 훅 (🎯 92 테스트)
 
 #### src/services/
 - `authService.ts`: 인증 API 서비스
@@ -164,17 +173,36 @@ const GameBoard = memo(({ gameState, onMove }) => {
 ## 키 파일 위치
 
 ### UI 컴포넌트 파일 (SPEC-UI-001)
+#### 게임 보드 컴포넌트
 - **`src/components/game/GameBoard.tsx`**: 메인 게임 보드 (🎯 128 테스트)
 - **`src/components/game/PlayerArea.tsx`**: 플레이어 영역 (🎯 101 테스트)
 - **`src/components/game/GroundArea.tsx`**: 바닥 카드 영역 (12슬롯)
-- **`src/components/cards/Card.tsx`**: 단일 카드 컴포넌트 (🎯 71 테스트)
-- **`src/components/cards/HandCards.tsx`**: 손패 컨테이너
-- **`src/components/cards/CapturedCards.tsx`**: 캡처된 카드 그리드
-- **`src/components/avatar/Avatar.tsx`**: 플레이어 아바타
 - **`src/components/game/ControlPanel.tsx`**: 고/스톱 제어 패널
 - **`src/components/game/ScoreDisplay.tsx`**: 점수 표시
-- **`src/components/game/TurnIndicator.tsx`**: 턴 표시기
+- **`src/components/game/TurnIndicator.tsx`**: 턴 표시기 (펄스 애니메이션)
 - **`src/components/game/GameStatus.tsx`**: 게임 상태 표시
+
+#### 카드 컴포넌트
+- **`src/components/cards/Card.tsx`**: 단일 카드 컴포넌트 (🎯 71 테스트)
+- **`src/components/cards/CardBack.tsx`**: 카드 뒷면 (한국 패턴)
+- **`src/components/cards/HandCards.tsx`**: 손패 컨테이너
+- **`src/components/cards/CapturedCards.tsx`**: 캡처된 카드 그리드
+
+#### 아바타 및 UI 컴포넌트
+- **`src/components/avatar/Avatar.tsx`**: 플레이어 아바타 (이모지/이미지)
+- **`src/components/ui/Button.tsx`**: 기본 버튼 컴포넌트
+- **`src/components/ui/Modal.tsx`**: 모달 컴포넌트
+
+#### 애니메이션 컴포넌트
+- **`src/components/animations/CardPlayAnimation.tsx`**: 카드 플레이 애니메이션 (🎯 20 테스트)
+- **`src/components/animations/CardMatchingAnimation.tsx`**: 매칭 글로우 애니메이션 (🎯 20 테스트)
+- **`src/components/animations/ScoreUpdateAnimation.tsx`**: 점수 업데이트 애니메이션 (🎯 20 테스트)
+- **`src/components/animations/TurnTransitionAnimation.tsx`**: 턴 전환 애니메이션 (🎯 19 테스트)
+- **`src/components/animations/GameOverAnimation.tsx`**: 게임 종료 애니메이션 (🎯 20 테스트)
+
+#### 반응형 디자인
+- **`src/components/responsive/ResponsiveContainer.tsx`**: 반응형 레이아웃 컨테이너 (🎯 92 테스트)
+- **`src/hooks/useBreakpoint.tsx`**: 브레이크포인트 감지 훅 (🎯 92 테스트)
 
 ### 핵심 게임 파일
 - **`src/lib/game/core/CardDeck.ts`**: 카드 덱 관리 (SPEC-GAME-001)
@@ -207,9 +235,17 @@ GameBoard (루트)
 │   │   └── Card
 │   └── ScoreDisplay
 ├── ControlPanel
-└── GameStatus
-    ├── TurnIndicator
-    └── ConnectionStatus
+├── GameStatus
+│   ├── TurnIndicator
+│   └── ConnectionStatus
+├── ResponsiveContainer
+│   └── 모든 게임 컴포넌트
+└── 애니메이션 래퍼
+    ├── CardPlayAnimation
+    ├── CardMatchingAnimation
+    ├── ScoreUpdateAnimation
+    ├── TurnTransitionAnimation
+    └── GameOverAnimation
 ```
 
 ### 컴포넌트 통합 상태 관리
@@ -263,6 +299,6 @@ class GameService {
 ---
 
 *문서 생성일: 2026-02-27*
-*최종 업데이트: 2026-03-04*
-*버전: 1.0.0*
-*UI 컴포넌트 진행: 75% (Phase 0-3 완료, Phase 4-8 진행 중)*
+*최종 업데이트: 2026-03-05*
+*버전: 1.0.3*
+*UI 컴포넌트 진행: 85% (Phase 0-4, 6 완료, Phase 7-8 진행 중)*
