@@ -65,6 +65,38 @@ describe('ControlPanel Component', () => {
 
       expect(screen.getByText(/0고/)).toBeInTheDocument()
     })
+
+    it('should not display multiplier when it is 1', () => {
+      render(
+        <ControlPanel
+          canGo={true}
+          canStop={true}
+          goCount={2}
+          multiplier={1}
+          onGo={() => {}}
+          onStop={() => {}}
+        />
+      )
+
+      expect(screen.getByText(/2고/)).toBeInTheDocument()
+      expect(screen.queryByText(/배율/)).not.toBeInTheDocument()
+    })
+
+    it('should display multiplier when greater than 1', () => {
+      render(
+        <ControlPanel
+          canGo={true}
+          canStop={true}
+          goCount={2}
+          multiplier={2}
+          onGo={() => {}}
+          onStop={() => {}}
+        />
+      )
+
+      expect(screen.getByText(/2고/)).toBeInTheDocument()
+      expect(screen.getByText(/\(2x 배율\)/)).toBeInTheDocument()
+    })
   })
 
   describe('Button States', () => {
@@ -414,6 +446,50 @@ describe('ControlPanel Component', () => {
       )
 
       expect(screen.getByText('2고')).toBeInTheDocument()
+    })
+
+    it('should display different multiplier values', () => {
+      const { rerender } = render(
+        <ControlPanel
+          canGo={true}
+          canStop={true}
+          goCount={3}
+          multiplier={4}
+          onGo={() => {}}
+          onStop={() => {}}
+        />
+      )
+
+      expect(screen.getByText(/\(4x 배율\)/)).toBeInTheDocument()
+
+      rerender(
+        <ControlPanel
+          canGo={true}
+          canStop={true}
+          goCount={5}
+          multiplier={15}
+          onGo={() => {}}
+          onStop={() => {}}
+        />
+      )
+
+      expect(screen.getByText(/\(15x 배율\)/)).toBeInTheDocument()
+    })
+
+    it('should apply purple color to multiplier text', () => {
+      const { container } = render(
+        <ControlPanel
+          canGo={true}
+          canStop={true}
+          goCount={2}
+          multiplier={2}
+          onGo={() => {}}
+          onStop={() => {}}
+        />
+      )
+
+      const multiplierText = container.querySelector('.text-purple-400')
+      expect(multiplierText).toBeInTheDocument()
     })
   })
 })

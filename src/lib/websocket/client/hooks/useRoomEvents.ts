@@ -1,285 +1,302 @@
 /**
- * useRoomEvents React Hook
- *
- * @MX:ANCHOR: useRoomEvents hook (fan_in: 5+)
- * @MX:REASON: Primary room event handling hook for game components
- * @MX:SPEC: SPEC-NET-001, TASK-020, ER-001, ER-002, ER-003, ER-004
- *
- * Responsibilities:
- * - Auto-join room on mount
- * - Auto-leave room on unmount
- * - Event handlers: game_state_updated, card_played, turn_changed, etc.
- * - Error event handling
- *
- * Reference: SPEC-NET-001, Section 5.3, TASK-020
+ * useRoomEvents - React hook for room event handling
+ * 
+ * Provides:
+ * - Room event listeners (join, leave, game state updates)
+ * - Player presence tracking
+ * - Game state synchronization
+ * - Automatic cleanup on unmount
+ * 
+ * @MX:ANCHOR Public API boundary - React hook for room event management
  */
 
-import { useEffect, useCallback } from 'react'
-import { SocketClient } from '../SocketClient'
-import { useSocketStore } from '../stores/socketStore'
-import { useGameStore } from '../stores/gameStore'
-import type { Card } from '../../../game/types/game.types'
+import { useEffect, useCallback } from 'react';
+import { useSocket } from './useSocket';
+import { useGameStore } from '../stores/gameStore';
+import type {
+  RoomState,
+  Player,
+  GameState,
+  ConnectionInfo,
+} from '../../types/websocket';
 
-/**
- * useRoomEvents hook options
- */
-export interface UseRoomEventsOptions {
-  roomId: string
-  autoJoin?: boolean
+interface UseRoomEventsOptions {
+  /**
+   * Room ID to join
+   */
+  roomId?: string;
+  
+  /**
+   * Enable spectator mode
+   * @default false
+   */
+  asSpectator?: boolean;
+  
+  /**
+   * Callbacks for room events
+   */
+  onRoomJoined?: (room: RoomState) => void;
+  onRoomLeft?: () => void;
+  onPlayerJoined?: (player: Player, index: number) => void;
+  onPlayerLeft?: (playerId: string) => void;
+  onPlayerReconnected?: (playerId: string) => void;
+  onPlayerDisconnected?: (playerId: string) => void;
+  onGameStarted?: (gameState: GameState) => void;
+  onGameStateUpdated?: (gameState: GameState) => void;
+  onGameOver?: (finalScores: RoomState['finalScores']) => void;
 }
 
 /**
- * useRoomEvents hook return value
- */
-export interface UseRoomEventsReturn {
-  isConnected: boolean
-  isInRoom: boolean
-  joinRoom: (playerNickname: string) => void
-  leaveRoom: () => void
-  playCard: (card: Card) => void
-  declareGo: () => void
-  declareStop: () => void
-}
-
-/**
- * useRoomEvents React Hook
- *
- * Manages room-specific event handlers for game events.
- * Auto-joins room on mount and auto-leaves on unmount.
- *
- * @MX:ANCHOR: useRoomEvents - Room events hook (fan_in: 5+)
- * @MX:REASON: Primary room event handling hook for game components
- *
+ * React hook for room event handling
+ * 
  * @example
  * ```tsx
- * const { joinRoom, playCard } = useRoomEvents({ roomId: 'room-123' })
+ * function GameBoard() {
+ *   const { joinRoom, leaveRoom, isMyTurn } = useRoomEvents({
+ *     roomId: 'room-123',
+ *     onGameStarted: (state) => console.log('Game started!', state),
+ *   });
+ *   
+ *   return <div>...</div>;
+ * }
  * ```
  */
-export function useRoomEvents(
-  options: UseRoomEventsOptions
-): UseRoomEventsReturn {
-  const { roomId, autoJoin = true } = options
+export function useRoomEvents(options: UseRoomEventsOptions = {}) {
+  const {
+    roomId,
+    asSpectator = false,
+    onRoomJoined,
+    onRoomLeft,
+    onPlayerJoined,
+    onPlayerLeft,
+    onPlayerReconnected,
+    onPlayerDisconnected,
+    onGameStarted,
+    onGameStateUpdated,
+    onGameOver,
+  } = options;
 
-  const connectionState = useSocketStore((state) => state.connectionState)
-  const currentRoomId = useSocketStore((state) => state.roomId)
-  const setRoomId = useSocketStore((state) => state.setRoomId)
-  const setGameState = useGameStore((state) => state.setGameState)
-  const addEventLog = useGameStore((state) => state.addEventLog)
-  const setError = useSocketStore((state) => state.setError)
+  const { on, off, isConnected, emit } = useSocket();
+  
+  const {
+    setCurrentRoom,
+    setPlayers,
+    setGameState,
+    setSpectating,
+    reset,
+  } = useGameStore();
 
-  const isConnected = connectionState === 'connected'
-  const isInRoom = currentRoomId === roomId
+  /**
+   * Join a room
+   */
+  const joinRoom = useCallback(() => {
+    if (!roomId || !isConnected) {
+      console.warn('[useRoomEvents] Cannot join room: no roomId or not connected');
+      return;
+    }
 
-  // Join room function
-  const joinRoom = useCallback(
-    (playerNickname: string) => {
-      const client = SocketClient.getInstance(
-        process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000'
-      )
+    if (asSpectator) {
+      emit('join_as_observer', roomId);
+    } else {
+      emit('join_room', roomId);
+    }
+  }, [roomId, asSpectator, isConnected, emit]);
 
-      client.emit('join_room', {
-        roomId,
-        playerNickname,
-      })
-
-      setRoomId(roomId)
-    },
-    [roomId, setRoomId]
-  )
-
-  // Leave room function
+  /**
+   * Leave current room
+   */
   const leaveRoom = useCallback(() => {
-    const client = SocketClient.getInstance(
-      process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000'
-    )
+    if (!roomId) return;
+    
+    emit('leave_room', roomId);
+    reset();
+  }, [roomId, emit, reset]);
 
-    client.emit('leave_room')
+  /**
+   * Play a card
+   */
+  const playCard = useCallback((cardId: string) => {
+    if (!roomId) return;
+    
+    emit('play_card', cardId, roomId);
+  }, [roomId, emit]);
 
-    setRoomId(null)
-  }, [setRoomId])
-
-  // Play card function
-  const playCard = useCallback(
-    (card: Card) => {
-      const client = SocketClient.getInstance(
-        process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000'
-      )
-
-      client.emit('play_card', { card })
-    },
-    []
-  )
-
-  // Declare Go function
+  /**
+   * Declare Go (continue playing)
+   */
   const declareGo = useCallback(() => {
-    const client = SocketClient.getInstance(
-      process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000'
-    )
+    if (!roomId) return;
+    
+    emit('declare_go', roomId);
+  }, [roomId, emit]);
 
-    client.emit('declare_go')
-  }, [])
-
-  // Declare Stop function
+  /**
+   * Declare Stop (end game)
+   */
   const declareStop = useCallback(() => {
-    const client = SocketClient.getInstance(
-      process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000'
-    )
+    if (!roomId) return;
+    
+    emit('declare_stop', roomId);
+  }, [roomId, emit]);
 
-    client.emit('declare_stop')
-  }, [])
+  /**
+   * Restart game
+   */
+  const restartGame = useCallback(() => {
+    if (!roomId) return;
+    
+    emit('restart_game', roomId);
+  }, [roomId, emit]);
 
-  // Setup event listeners
+  // Setup room event listeners
   useEffect(() => {
-    const client = SocketClient.getInstance(
-      process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000'
-    )
+    if (!isConnected) return;
 
-    // Room events
-    const handleRoomJoined = (data: { roomId: string; players: unknown[] }) => {
-      console.log('Room joined:', data)
-      setRoomId(data.roomId)
-    }
+    /**
+     * Room joined successfully
+     */
+    const handleRoomJoined = (room: RoomState) => {
+      console.log('[useRoomEvents] Room joined:', room.roomId);
+      setCurrentRoom(room);
+      setPlayers(room.players);
+      setSpectating(asSpectator);
+      onRoomJoined?.(room);
+    };
 
-    const handlePlayerJoined = (data: { userId: string; username: string }) => {
-      console.log('Player joined:', data)
-      addEventLog({
-        type: 'card_played',
-        data,
-      })
-    }
+    /**
+     * Player joined room
+     */
+    const handlePlayerJoined = (player: Player, playerIndex: 0 | 1) => {
+      console.log('[useRoomEvents] Player joined:', player.id, 'at index', playerIndex);
+      
+      setPlayers((players) => {
+        const newPlayers = [...players] as [Player | null, Player | null];
+        newPlayers[playerIndex] = player;
+        return newPlayers;
+      });
+      
+      onPlayerJoined?.(player, playerIndex);
+    };
 
-    const handlePlayerLeft = (data: { userId: string }) => {
-      console.log('Player left:', data)
-      addEventLog({
-        type: 'card_played',
-        data,
-      })
-    }
+    /**
+     * Player left room
+     */
+    const handlePlayerLeft = (playerId: string) => {
+      console.log('[useRoomEvents] Player left:', playerId);
+      
+      setPlayers((players) => {
+        const newPlayers = [...players] as [Player | null, Player | null];
+        if (newPlayers[0]?.id === playerId) newPlayers[0] = null;
+        if (newPlayers[1]?.id === playerId) newPlayers[1] = null;
+        return newPlayers;
+      });
+      
+      onPlayerLeft?.(playerId);
+    };
 
-    const handleRoomFull = (data: { roomId: string }) => {
-      console.log('Room full:', data)
-      setError('Room is full')
-    }
+    /**
+     * Player reconnected
+     */
+    const handlePlayerReconnected = (connectionInfo: ConnectionInfo) => {
+      console.log('[useRoomEvents] Player reconnected:', connectionInfo.playerId);
+      onPlayerReconnected?.(connectionInfo.playerId);
+    };
 
-    // Game events
-    const handleGameStateUpdated = (state: unknown) => {
-      console.log('Game state updated:', state)
-      setGameState(state as any)
-    }
+    /**
+     * Player disconnected
+     */
+    const handlePlayerDisconnected = (connectionInfo: ConnectionInfo) => {
+      console.log('[useRoomEvents] Player disconnected:', connectionInfo.playerId);
+      onPlayerDisconnected?.(connectionInfo.playerId);
+    };
 
-    const handleCardPlayed = (data: {
-      playerId: string
-      card: Card
-      previousPlayer: number
-    }) => {
-      console.log('Card played:', data)
-      addEventLog({
-        type: 'card_played',
-        data,
-      })
-    }
+    /**
+     * Game started
+     */
+    const handleGameStarted = (gameState: GameState) => {
+      console.log('[useRoomEvents] Game started');
+      setGameState(gameState);
+      onGameStarted?.(gameState);
+    };
 
-    const handleTurnChanged = (data: {
-      previousPlayer: number
-      currentPlayer: number
-    }) => {
-      console.log('Turn changed:', data)
-      addEventLog({
-        type: 'turn_changed',
-        data,
-      })
-    }
+    /**
+     * Game state updated
+     */
+    const handleGameStateUpdated = (gameState: GameState) => {
+      console.log('[useRoomEvents] Game state updated');
+      setGameState(gameState);
+      onGameStateUpdated?.(gameState);
+    };
 
-    const handleGoDeclared = (data: {
-      playerId: string
-      goCount: number
-      multiplier: number
-    }) => {
-      console.log('Go declared:', data)
-      addEventLog({
-        type: 'go_declared',
-        data,
-      })
-    }
+    /**
+     * Game over
+     */
+    const handleGameOver = (finalScores: RoomState['finalScores']) => {
+      console.log('[useRoomEvents] Game over:', finalScores);
+      onGameOver?.(finalScores);
+    };
 
-    const handleStopDeclared = (data: {
-      playerId: string
-      multiplier: number
-      finalScores: unknown
-    }) => {
-      console.log('Stop declared:', data)
-      addEventLog({
-        type: 'stop_declared',
-        data,
-      })
-    }
+    /**
+     * Error occurred
+     */
+    const handleError = (error: { code: string; message: string; details?: any }) => {
+      console.error('[useRoomEvents] Error:', error);
+    };
 
-    const handleGameOver = (data: {
-      winner: number
-      finalScores: unknown
-      multiplier: number
-    }) => {
-      console.log('Game over:', data)
-      addEventLog({
-        type: 'game_over',
-        data,
-      })
-    }
+    // Register event listeners
+    on('room_joined', handleRoomJoined);
+    on('player_joined', handlePlayerJoined);
+    on('player_left', handlePlayerLeft);
+    on('player_reconnected', handlePlayerReconnected);
+    on('player_disconnected', handlePlayerDisconnected);
+    on('game_started', handleGameStarted);
+    on('game_state_updated', handleGameStateUpdated);
+    on('game_over', handleGameOver);
+    on('error', handleError);
 
-    // Error events
-    const handleError = (data: { code: string; message: string }) => {
-      console.error('WebSocket error:', data)
-      setError(data.message)
-    }
-
-    // Register listeners
-    client.on('room_joined', handleRoomJoined)
-    client.on('player_joined', handlePlayerJoined)
-    client.on('player_left', handlePlayerLeft)
-    client.on('room_full', handleRoomFull)
-    client.on('game_state_updated', handleGameStateUpdated)
-    client.on('card_played', handleCardPlayed)
-    client.on('turn_changed', handleTurnChanged)
-    client.on('go_declared', handleGoDeclared)
-    client.on('stop_declared', handleStopDeclared)
-    client.on('game_over', handleGameOver)
-    client.on('error', handleError)
-
-    // Auto-join room if enabled and connected
-    if (autoJoin && isConnected && !isInRoom) {
-      // Note: Need to get player nickname from somewhere
-      // For now, we'll just log
-      console.log('Auto-join room:', roomId)
-    }
-
-    // Cleanup
+    // Cleanup on unmount
     return () => {
-      client.off('room_joined', handleRoomJoined)
-      client.off('player_joined', handlePlayerJoined)
-      client.off('player_left', handlePlayerLeft)
-      client.off('room_full', handleRoomFull)
-      client.off('game_state_updated', handleGameStateUpdated)
-      client.off('card_played', handleCardPlayed)
-      client.off('turn_changed', handleTurnChanged)
-      client.off('go_declared', handleGoDeclared)
-      client.off('stop_declared', handleStopDeclared)
-      client.off('game_over', handleGameOver)
-      client.off('error', handleError)
-
-      // Auto-leave room on unmount
-      if (isInRoom) {
-        leaveRoom()
-      }
-    }
-  }, [isConnected, isInRoom, roomId, autoJoin, setRoomId, setGameState, addEventLog, setError, leaveRoom])
+      off('room_joined', handleRoomJoined);
+      off('player_joined', handlePlayerJoined);
+      off('player_left', handlePlayerLeft);
+      off('player_reconnected', handlePlayerReconnected);
+      off('player_disconnected', handlePlayerDisconnected);
+      off('game_started', handleGameStarted);
+      off('game_state_updated', handleGameStateUpdated);
+      off('game_over', handleGameOver);
+      off('error', handleError);
+    };
+  }, [
+    isConnected,
+    on,
+    off,
+    setCurrentRoom,
+    setPlayers,
+    setGameState,
+    setSpectating,
+    asSpectator,
+    onRoomJoined,
+    onPlayerJoined,
+    onPlayerLeft,
+    onPlayerReconnected,
+    onPlayerDisconnected,
+    onGameStarted,
+    onGameStateUpdated,
+    onGameOver,
+  ]);
 
   return {
-    isConnected,
-    isInRoom,
+    // Actions
     joinRoom,
     leaveRoom,
     playCard,
     declareGo,
     declareStop,
-  }
+    restartGame,
+
+    // State (from gameStore)
+    isSpectating: asSpectator,
+  };
 }
+
+export default useRoomEvents;

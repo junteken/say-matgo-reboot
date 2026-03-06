@@ -9,12 +9,7 @@
  */
 
 import type { GoDeclarationResult, StopDeclarationResult } from '../types/game.types';
-
-/**
- * Go bonuses per declaration count
- * @MX:NOTE: Each Go adds 1 point to base score
- */
-const GO_BONUSES = [0, 1, 2, 4, 8, 15] as const;
+import { GO_BONUSES, GO_MULTIPLIERS, GO_THRESHOLD } from '../constants/card.constants';
 
 /**
  * GoStopSystem class for managing Go/Stop declarations
@@ -33,7 +28,7 @@ export class GoStopSystem {
    * @returns true if score is 7 or higher
    */
   canDeclareGo(score: number): boolean {
-    return score >= 7;
+    return score >= GO_THRESHOLD;
   }
 
   /**
@@ -130,9 +125,9 @@ export class GoStopSystem {
    * @returns Multiplier value
    */
   private calculateMultiplier(): number {
-    if (this.goCount === 0) return 1;
-    if (this.goCount <= 2) return 2;
-    if (this.goCount <= 4) return 4;
-    return 15;
+    if (this.goCount === 0) return GO_MULTIPLIERS.zero;
+    if (this.goCount <= 2) return GO_MULTIPLIERS.two;
+    if (this.goCount <= 4) return GO_MULTIPLIERS.four;
+    return GO_MULTIPLIERS.five;
   }
 }

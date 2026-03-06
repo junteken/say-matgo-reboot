@@ -6,8 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:ws": "tsx watch src/server/index.ts",
     "build": "next build",
+    "build:ws": "tsc",
     "start": "next start",
+    "start:ws": "node dist/server/index.js",
     "lint": "next lint",
     "test": "vitest",
     "test:ui": "vitest --ui",

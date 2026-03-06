@@ -16,6 +16,8 @@ interface ControlPanelProps {
   canStop: boolean
   /** Current Go count (default: 0) */
   goCount?: number
+  /** Current Go multiplier (default: 1) */
+  multiplier?: number
   /** Callback when Go button is clicked */
   onGo: () => void
   /** Callback when Stop button is clicked */
@@ -29,6 +31,7 @@ export function ControlPanel({
   canGo,
   canStop,
   goCount = 0,
+  multiplier = 1,
   onGo,
   onStop,
 }: ControlPanelProps) {
@@ -64,10 +67,15 @@ export function ControlPanel({
       aria-label="게임 컨트롤"
       className="control-panel w-full"
     >
-      {/* Go count display */}
+      {/* Go count display with multiplier */}
       <div className="text-center mb-3">
         <span className="text-lg font-bold text-highlight">
           {goCount}고
+          {multiplier > 1 && (
+            <span className="ml-2 text-sm font-semibold text-purple-400">
+              ({multiplier}x 배율)
+            </span>
+          )}
         </span>
       </div>
 

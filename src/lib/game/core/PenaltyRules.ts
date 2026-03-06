@@ -10,24 +10,7 @@
  */
 
 import type { Card, Penalty } from '../types/game.types';
-
-/**
- * Penalty point values
- */
-const PENALTY_POINTS = {
-  'pi-bak': 2,
-  'kwang-bak': 3,
-  'meong-bak': 2,
-  'go-bak': 2,
-} as const;
-
-/**
- * Minimum thresholds for penalty conditions
- */
-const PENALTY_THRESHOLDS = {
-  pi: 10,
-  kwang: 3,
-} as const;
+import { PENALTY_POINTS, PENALTY_THRESHOLDS } from '../constants/card.constants';
 
 /**
  * PenaltyRules class for checking and calculating penalties

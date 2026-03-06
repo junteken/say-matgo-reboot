@@ -9,29 +9,7 @@
  */
 
 import type { Card, Month } from '../types/game.types';
-
-/**
- * Card composition for each month in Mat-go
- *
- * @MX:NOTE: Standard Mat-go has exactly 4 cards per month across 12 months (48 total)
- * @MX:NOTE: Simplified model: Each month has 1 kwang, 1 yulkkut, 1 tti, 1 pi
- * @MX:NOTE: Real Mat-go has variations (November has 2 tti+2 pi, December has 1 kwang only)
- * @MX:NOTE: This simplified model is used for core game logic testing
- */
-const CARD_COMPOSITION: Record<Month, { kwang: number; yulkkut: number; tti: number; pi: number }> = {
-  1: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 },  // January
-  2: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 },  // February
-  3: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 },  // March
-  4: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 },  // April
-  5: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 },  // May
-  6: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 },  // June
-  7: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 },  // July
-  8: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 },  // August
-  9: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 },  // September
-  10: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 }, // October
-  11: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 }, // November (simplified)
-  12: { kwang: 1, yulkkut: 1, tti: 1, pi: 1 }, // December (simplified)
-};
+import { CARD_COMPOSITION, TOTAL_CARDS } from '../constants/card.constants';
 
 /**
  * CardDeck class for managing Mat-go card deck

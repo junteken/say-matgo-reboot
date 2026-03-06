@@ -1,113 +1,60 @@
 /**
- * SocketStore - Connection State Management
- *
- * @MX:ANCHOR: socketStore - Connection state (fan_in: 5+)
- * @MX:REASON: Used by all components needing connection status
- * @MX:SPEC: SPEC-NET-001, TASK-019, FR-PR-002
- *
- * Responsibilities:
- * - Connection state tracking
- * - Authentication state management
- * - Room information storage
- * - Error state management
- *
- * Reference: SPEC-NET-001, Section 5.2, TASK-019
+ * socketStore - Zustand store for WebSocket connection state
+ * 
+ * Manages:
+ * - Connection status (disconnected, connecting, connected, error)
+ * - Authentication status
+ * - Error messages
+ * - Reconnection state
+ * 
+ * @MX:NOTE Business logic - connection state management for WebSocket client
  */
 
-import { create } from 'zustand'
-import { devtools, persist } from 'zustand/middleware'
+import { create } from 'zustand';
+import { ConnectionState } from '../../types/websocket';
 
-/**
- * Connection state
- */
-export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
-
-/**
- * Socket store state
- */
-interface SocketState {
-  // Connection state
-  connectionState: ConnectionState
-  setConnectionState: (state: ConnectionState) => void
-
-  // Authentication
-  isAuthenticated: boolean
-  setAuthenticated: (authenticated: boolean) => void
-  userId: string | null
-  setUserId: (userId: string | null) => void
-
-  // Room
-  roomId: string | null
-  setRoomId: (roomId: string | null) => void
-
-  // Error
-  error: string | null
-  setError: (error: string | null) => void
-  clearError: () => void
-
+interface SocketStore {
+  // State
+  connectionState: ConnectionState;
+  isAuthenticated: boolean;
+  error: string | null;
+  reconnectAttempts: number;
+  
   // Actions
-  connect: () => void
-  disconnect: () => void
-  reset: () => void
+  setConnectionState: (state: ConnectionState) => void;
+  setAuthenticated: (authenticated: boolean) => void;
+  setError: (error: string | null) => void;
+  setReconnectAttempts: (attempts: number) => void;
+  reset: () => void;
 }
 
 /**
- * Socket store with Zustand
- *
- * @MX:ANCHOR: socketStore - Connection state (fan_in: 5+)
- * @MX:REASON: Used by all components needing connection status
+ * Zustand store for WebSocket connection state
  */
-export const useSocketStore = create<SocketState>()(
-  devtools(
-    persist(
-      (set) => ({
-        // Initial state
-        connectionState: 'disconnected',
-        isAuthenticated: false,
-        userId: null,
-        roomId: null,
-        error: null,
+export const useSocketStore = create<SocketStore>((set) => ({
+  // Initial state
+  connectionState: 'disconnected',
+  isAuthenticated: false,
+  error: null,
+  reconnectAttempts: 0,
 
-        // Connection state
-        setConnectionState: (state) => set({ connectionState: state }),
+  // Actions
+  setConnectionState: (state) => set({ connectionState: state }),
+  
+  setAuthenticated: (authenticated) => set({ isAuthenticated: authenticated }),
+  
+  setError: (error) => set({ error }),
+  
+  setReconnectAttempts: (attempts) => set({ reconnectAttempts: attempts }),
 
-        // Authentication
-        setAuthenticated: (authenticated) => set({ isAuthenticated: authenticated }),
-        setUserId: (userId) => set({ userId }),
-
-        // Room
-        setRoomId: (roomId) => set({ roomId }),
-
-        // Error
-        setError: (error) => set({ error }),
-        clearError: () => set({ error: null }),
-
-        // Actions
-        connect: () => set({ connectionState: 'connecting' }),
-        disconnect: () => set({
-          connectionState: 'disconnected',
-          isAuthenticated: false,
-          roomId: null,
-        }),
-
-        // Reset
-        reset: () => set({
-          connectionState: 'disconnected',
-          isAuthenticated: false,
-          userId: null,
-          roomId: null,
-          error: null,
-        }),
-      }),
-      {
-        name: 'socket-storage',
-        partialize: (state) => ({
-          isAuthenticated: state.isAuthenticated,
-          userId: state.userId,
-          roomId: state.roomId,
-        }),
-      }
-    ),
-    { name: 'SocketStore' }
-  )
-)
+  /**
+   * Reset store to initial state
+   * Call this when logging out or manually disconnecting
+   */
+  reset: () => set({
+    connectionState: 'disconnected',
+    isAuthenticated: false,
+    error: null,
+    reconnectAttempts: 0,
+  }),
+}));

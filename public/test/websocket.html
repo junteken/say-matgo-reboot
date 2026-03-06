@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Connection Test - Say Mat-go Reboot</title>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .status {
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: 600;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .status.disconnected {
+      background: #fee;
+      color: #c33;
+    }
+
+    .status.connecting {
+      background: #ffd;
+      color: #960;
+    }
+
+    .status.connected {
+      background: #efe;
+      color: #3a3;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .connect-btn {
+      background: #667eea;
+      color: white;
+    }
+
+    .connect-btn:hover {
+      background: #5568d3;
+    }
+
+    .disconnect-btn {
+      background: #ef4444;
+      color: white;
+    }
+
+    .disconnect-btn:hover {
+      background: #dc2626;
+    }
+
+    .disconnect-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .logs {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 4px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-time {
+      color: #858585;
+      margin-right: 8px;
+    }
+
+    .log-info {
+      color: #4ec9b0;
+    }
+
+    .log-success {
+      color: #4caf50;
+    }
+
+    .log-error {
+      color: #f44336;
+    }
+
+    .log-event {
+      color: #2196f3;
+    }
+
+    .preset-urls {
+      margin-bottom: 20px;
+    }
+
+    .preset-btn {
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+
+    .preset-btn:hover {
+      background: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔌 WebSocket 연결 테스트</h1>
+    <p class="subtitle">Say Mat-go Reboot - Socket.IO 연결 확인</p>
+
+    <div class="status disconnected" id="status">
+      연결 안됨
+    </div>
+
+    <div class="preset-urls">
+      <label>프리셋 URL:</label>
+      <div class="button-group">
+        <button class="preset-btn" onclick="setPreset('local')">로컬 개발</button>
+        <button class="preset-btn" onclick="setPreset('production')">프로덕션</button>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label for="ws-url">WebSocket URL:</label>
+      <input
+        type="text"
+        id="ws-url"
+        value="http://localhost:8080"
+        placeholder="ws://localhost:8080 또는 wss://your-domain.railway.app"
+      />
+    </div>
+
+    <div class="button-group">
+      <button class="connect-btn" onclick="connect()">연결</button>
+      <button class="disconnect-btn" onclick="disconnect()" disabled>연결 해제</button>
+    </div>
+
+    <div class="logs" id="logs">
+      <div class="log-entry">
+        <span class="log-time">[시스템]</span>
+        <span class="log-info">WebSocket 테스트 페이지가 로드되었습니다.</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let socket = null;
+
+    function log(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+
+      const time = new Date().toLocaleTimeString('ko-KR');
+      entry.innerHTML = `
+        <span class="log-time">[${time}]</span>
+        <span class="log-${type}">${message}</span>
+      `;
+
+      logs.appendChild(entry);
+      logs.scrollTop = logs.scrollHeight;
+    }
+
+    function updateStatus(status) {
+      const statusEl = document.getElementById('status');
+      statusEl.className = `status ${status}`;
+
+      switch (status) {
+        case 'connected':
+          statusEl.textContent = '✅ 연결됨';
+          break;
+        case 'connecting':
+          statusEl.textContent = '⏳ 연결 중...';
+          break;
+        case 'disconnected':
+          statusEl.textContent = '❌ 연결 안됨';
+          break;
+      }
+    }
+
+    function setPreset(type) {
+      const urlInput = document.getElementById('ws-url');
+
+      switch (type) {
+        case 'local':
+          urlInput.value = 'http://localhost:8080';
+          log('로컬 개발 URL이 설정되었습니다.', 'info');
+          break;
+        case 'production':
+          urlInput.value = 'wss://say-matgo-ws.up.railway.app';
+          log('프로덕션 URL이 설정되었습니다. 배포 후 실제 URL로 변경해주세요.', 'info');
+          break;
+      }
+    }
+
+    function connect() {
+      const url = document.getElementById('ws-url').value.trim();
+
+      if (!url) {
+        log('WebSocket URL을 입력해주세요.', 'error');
+        return;
+      }
+
+      if (socket && socket.connected) {
+        log('이미 연결되어 있습니다.', 'error');
+        return;
+      }
+
+      updateStatus('connecting');
+      log(`연결 시도: ${url}`, 'info');
+
+      try {
+        socket = io(url, {
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+        });
+
+        // Connection event
+        socket.on('connect', () => {
+          updateStatus('connected');
+          log(`연결 성공! Socket ID: ${socket.id}`, 'success');
+          document.querySelector('.disconnect-btn').disabled = false;
+        });
+
+        // Connection error event
+        socket.on('connect_error', (error) => {
+          updateStatus('disconnected');
+          log(`연결 실패: ${error.message}`, 'error');
+          log('URL을 확인하고 서버가 실행 중인지 확인해주세요.', 'info');
+        });
+
+        // Disconnect event
+        socket.on('disconnect', (reason) => {
+          updateStatus('disconnected');
+          log(`연결 해제: ${reason}`, 'error');
+          document.querySelector('.disconnect-btn').disabled = true;
+        });
+
+        // Custom events (예시)
+        socket.on('room:joined', (data) => {
+          log(`방 참가: ${JSON.stringify(data)}`, 'event');
+        });
+
+        socket.on('game:state', (data) => {
+          log(`게임 상태: ${JSON.stringify(data)}`, 'event');
+        });
+
+        socket.on('player:joined', (data) => {
+          log(`플레이어 참가: ${JSON.stringify(data)}`, 'event');
+        });
+
+      } catch (error) {
+        updateStatus('disconnected');
+        log(`오류 발생: ${error.message}`, 'error');
+      }
+    }
+
+    function disconnect() {
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+        updateStatus('disconnected');
+        log('연결이 해제되었습니다.', 'info');
+        document.querySelector('.disconnect-btn').disabled = true;
+      }
+    }
+
+    // 페이지 언로드 시 정리
+    window.addEventListener('beforeunload', () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    });
+
+    // Enter 키로 연결
+    document.getElementById('ws-url').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        connect();
+      }
+    });
+  </script>
+</body>
+</html>

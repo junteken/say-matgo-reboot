@@ -1,308 +1,301 @@
 /**
- * SocketClient Singleton
- *
- * @MX:ANCHOR: SocketClient singleton (fan_in: 5+)
- * @MX:REASON: Called by React hooks, Zustand stores, and UI components
- * @MX:SPEC: SPEC-NET-001, TASK-017, FR-CM-002, NFR-P-002
- *
- * Responsibilities:
- * - Singleton Socket.IO client wrapper
- * - Auto-reconnection with exponential backoff (max 5 attempts)
- * - JWT token management
- * - Event emitter pattern for internal events
- * - Connection state management
- *
- * Reference: SPEC-NET-001, Section 5.1, TASK-017
+ * SocketClient - Singleton Socket.IO client for WebSocket communication
+ * 
+ * Provides:
+ * - Singleton pattern for single socket instance
+ * - Connection management with JWT authentication
+ * - Auto-reconnect with exponential backoff
+ * - Event emission and reception
+ * - TypeScript type safety with server event types
+ * 
+ * @MX:ANCHOR Public API for WebSocket client initialization
  */
 
-import { io, type Socket } from 'socket.io-client'
-import { EventEmitter } from 'events'
+import { io, Socket } from 'socket.io-client';
+import type {
+  ClientToServerEvents,
+  ServerToClientEvents,
+  ConnectionState,
+  RoomState,
+  Player,
+  GameState,
+  Score,
+} from '../types/websocket';
 
-/**
- * Connection state
- */
-export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
+// Event handler type
+type EventHandler = (...args: any[]) => void;
 
 /**
  * SocketClient singleton class
- *
- * Wraps Socket.IO client with reconnection logic, JWT management,
- * and event emitter pattern for easy integration with React hooks.
- *
- * @MX:ANCHOR: getInstance - Singleton access (fan_in: 5+)
- * @MX:REASON: Called by useSocket hook, stores, and components
+ * Manages WebSocket connection with auto-reconnect and event handling
  */
-export class SocketClient extends EventEmitter {
-  private static instances: Map<string, SocketClient> = new Map()
-  private socket: Socket | null = null
-  private serverUrl: string
-  private token: string | null = null
-  private connectionState: ConnectionState = 'disconnected'
-  private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
-  private reconnectDelay = 1000 // Start with 1 second
-  private readonly maxReconnectDelay = 30000 // Max 30 seconds
+class SocketClient {
+  private static instance: SocketClient | null = null;
+  private socket: Socket<ClientToServerEvents, ServerToClientEvents> | null = null;
+  private reconnectAttempts: number = 0;
+  private readonly maxReconnectAttempts: number = 5;
+  private reconnectDelay: number = 1000; // Start at 1 second
+  private readonly maxReconnectDelay: number = 15000; // Cap at 15 seconds
+  private isManualDisconnect: boolean = false;
+  private eventHandlers: Map<string, Set<EventHandler>> = new Map();
+  private currentToken: string | null = null;
 
-  private constructor(serverUrl: string) {
-    super()
-    this.serverUrl = serverUrl
-    this.initializeSocket()
+  private constructor() {
+    // Private constructor for singleton
   }
 
   /**
    * Get singleton instance
-   *
-   * @param serverUrl - WebSocket server URL
-   * @returns SocketClient instance
-   *
-   * @MX:ANCHOR: getInstance - Singleton access (fan_in: 5+)
-   * @MX:REASON: Called by useSocket hook, stores, and components
+   * @MX:ANCHOR Public API boundary - single access point for client instance
    */
-  static getInstance(serverUrl: string): SocketClient {
-    if (!SocketClient.instances.has(serverUrl)) {
-      const instance = new SocketClient(serverUrl)
-      SocketClient.instances.set(serverUrl, instance)
+  public static getInstance(): SocketClient {
+    if (!SocketClient.instance) {
+      SocketClient.instance = new SocketClient();
     }
-    return SocketClient.instances.get(serverUrl)!
+    return SocketClient.instance;
   }
 
   /**
-   * Reset instance (for testing)
+   * Connect to WebSocket server with JWT authentication
+   * @param token - JWT token from Supabase
    */
-  static resetInstance(): void {
-    SocketClient.instances.forEach((instance) => {
-      instance.disconnect()
-      instance.removeAllListeners()
-    })
-    SocketClient.instances.clear()
+  public connect(token: string): void {
+    if (this.socket?.connected) {
+      console.warn('[SocketClient] Already connected');
+      return;
+    }
+
+    this.currentToken = token;
+    this.isManualDisconnect = false;
+    this.reconnectAttempts = 0;
+    this.reconnectDelay = 1000;
+
+    try {
+      this.socket = this.createSocket(token);
+      this.setupSocketListeners();
+      console.log('[SocketClient] Connecting to WebSocket server...');
+    } catch (error) {
+      console.error('[SocketClient] Failed to create socket:', error);
+      this.handleReconnect();
+    }
   }
 
   /**
-   * Initialize Socket.IO client
+   * Disconnect from WebSocket server
+   * Stops auto-reconnect if manually disconnected
    */
-  private initializeSocket(): void {
-    this.connectionState = 'connecting'
-    this.emit('connecting')
-
-    const auth = this.token ? { token: this.token } : undefined
-
-    this.socket = io(this.serverUrl, {
-      auth,
-      reconnection: true,
-      reconnectionDelay: this.reconnectDelay,
-      reconnectionDelayMax: this.maxReconnectDelay,
-      reconnectionAttempts: this.maxReconnectAttempts,
-      transports: ['websocket'],
-    })
-
-    this.setupSocketListeners()
-  }
-
-  /**
-   * Setup Socket.IO event listeners
-   */
-  private setupSocketListeners(): void {
-    if (!this.socket) return
-
-    // Connection events
-    this.socket.on('connect', () => {
-      this.connectionState = 'connected'
-      this.reconnectAttempts = 0
-      this.reconnectDelay = 1000
-      this.emit('connected', { socketId: this.socket!.id })
-    })
-
-    this.socket.on('disconnect', (reason) => {
-      this.connectionState = 'disconnected'
-      this.emit('disconnected', { reason })
-    })
-
-    this.socket.on('connect_error', (error) => {
-      this.connectionState = 'disconnected'
-      this.emit('error', { error })
-    })
-
-    // Reconnection events
-    this.socket.io.on('reconnect_attempt', (attempt) => {
-      this.connectionState = 'reconnecting'
-      this.reconnectAttempts = attempt
-      this.reconnectDelay = Math.min(
-        this.reconnectDelay * 2,
-        this.maxReconnectDelay
-      )
-      this.emit('reconnect_attempt', {
-        attempt,
-        delay: this.reconnectDelay,
-      })
-    })
-
-    this.socket.io.on('reconnect', (attemptNumber) => {
-      this.connectionState = 'connected'
-      this.reconnectAttempts = 0
-      this.emit('reconnected', { attempt: attemptNumber })
-    })
-
-    this.socket.io.on('reconnect_failed', () => {
-      this.connectionState = 'disconnected'
-      this.emit('reconnect_failed', {
-        attempts: this.reconnectAttempts,
-      })
-    })
-
-    // Authentication events
-    this.socket.on('authenticated', (data) => {
-      this.emit('authenticated', data)
-    })
-
-    this.socket.on('authentication_failed', (data) => {
-      this.emit('authentication_failed', data)
-    })
-  }
-
-  /**
-   * Get underlying Socket.IO socket
-   */
-  getSocket(): Socket | null {
-    return this.socket
-  }
-
-  /**
-   * Check if connected
-   */
-  isConnected(): boolean {
-    return this.connectionState === 'connected' && this.socket?.connected === true
-  }
-
-  /**
-   * Get connection state
-   */
-  getConnectionState(): ConnectionState {
-    return this.connectionState
-  }
-
-  /**
-   * Connect to server
-   */
-  connect(): void {
-    if (!this.socket || this.socket.connected) return
-
-    this.socket.connect()
-  }
-
-  /**
-   * Disconnect from server
-   */
-  disconnect(): void {
+  public disconnect(): void {
+    this.isManualDisconnect = true;
+    this.reconnectAttempts = 0;
+    
     if (this.socket) {
-      this.socket.disconnect()
+      this.socket.disconnect();
+      this.socket = null;
     }
-    this.connectionState = 'disconnected'
-  }
-
-  /**
-   * Set JWT token
-   *
-   * @param token - JWT token
-   */
-  setToken(token: string): void {
-    this.token = token
-
-    // Update socket auth
-    if (this.socket) {
-      this.socket.auth = { token }
-    }
-  }
-
-  /**
-   * Get JWT token
-   */
-  getToken(): string | null {
-    return this.token
-  }
-
-  /**
-   * Get auth object for Socket.IO
-   */
-  getAuth(): { token?: string } {
-    return this.token ? { token: this.token } : {}
-  }
-
-  /**
-   * Clear JWT token
-   */
-  clearToken(): void {
-    this.token = null
-
-    if (this.socket) {
-      this.socket.auth = {}
-    }
+    
+    this.currentToken = null;
+    console.log('[SocketClient] Disconnected from server');
   }
 
   /**
    * Emit event to server
-   *
-   * @param event - Event name
+   * @param event - Event name from ClientToServerEvents
    * @param data - Event data
    */
-  emit(event: string, data?: unknown): void {
-    if (this.socket && this.socket.connected) {
-      this.socket.emit(event, data)
+  public emit<K extends keyof ClientToServerEvents>(
+    event: K,
+    ...args: Parameters<ClientToServerEvents[K]>
+  ): void {
+    if (!this.socket?.connected) {
+      console.warn('[SocketClient] Cannot emit event: not connected', event);
+      return;
+    }
+
+    try {
+      this.socket.emit(event, ...args);
+      console.log('[SocketClient] Emitted event:', event);
+    } catch (error) {
+      console.error('[SocketClient] Failed to emit event:', event, error);
     }
   }
 
   /**
-   * Listen to server event
-   *
-   * @param event - Event name
-   * @param handler - Event handler
+   * Register event handler
+   * @param event - Event name from ServerToClientEvents
+   * @param handler - Event handler function
    */
-  on(event: string, handler: (...args: unknown[]) => void): void {
-    super.on(event, handler)
+  public on<K extends keyof ServerToClientEvents>(
+    event: K,
+    handler: ServerToClientEvents[K]
+  ): void {
+    if (!this.eventHandlers.has(event)) {
+      this.eventHandlers.set(event as string, new Set());
+    }
+    
+    this.eventHandlers.get(event as string)!.add(handler as EventHandler);
 
     if (this.socket) {
-      this.socket.on(event, handler)
+      this.socket.on(event, handler);
     }
   }
 
   /**
-   * Remove event listener
-   *
-   * @param event - Event name
-   * @param handler - Event handler
+   * Unregister event handler
+   * @param event - Event name from ServerToClientEvents
+   * @param handler - Event handler function to remove
    */
-  off(event: string, handler?: (...args: unknown[]) => void): void {
-    if (handler) {
-      super.off(event, handler)
-
-      if (this.socket) {
-        this.socket.off(event, handler)
+  public off<K extends keyof ServerToClientEvents>(
+    event: K,
+    handler: ServerToClientEvents[K]
+  ): void {
+    const handlers = this.eventHandlers.get(event as string);
+    if (handlers) {
+      handlers.delete(handler as EventHandler);
+      
+      if (handlers.size === 0) {
+        this.eventHandlers.delete(event as string);
       }
-    } else {
-      super.removeAllListeners(event)
+    }
 
-      if (this.socket) {
-        this.socket.removeAllListeners(event)
-      }
+    if (this.socket) {
+      this.socket.off(event, handler);
     }
   }
 
   /**
-   * Get listener count for event
-   *
-   * @param event - Event name
-   * @returns Listener count
+   * Check if socket is connected
    */
-  listenerCount(event: string): number {
-    return this.listenerCount(event)
+  public isConnected(): boolean {
+    return this.socket?.connected ?? false;
   }
 
   /**
-   * Destroy client
+   * Get raw socket instance (for advanced usage)
    */
-  destroy(): void {
-    this.disconnect()
-    this.removeAllListeners()
-    this.socket = null
-    this.token = null
+  public getSocket(): Socket<ClientToServerEvents, ServerToClientEvents> | null {
+    return this.socket;
+  }
+
+  /**
+   * Create socket instance with configuration
+   * @param token - JWT token for authentication
+   */
+  private createSocket(token: string): Socket<ClientToServerEvents, ServerToClientEvents> {
+    const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3001';
+    
+    return io(wsUrl, {
+      auth: {
+        token,
+      },
+      transports: ['websocket'],
+      reconnection: false, // We handle reconnection manually
+      timeout: 10000,
+    });
+  }
+
+  /**
+   * Setup socket event listeners
+   * @MX:NOTE Complex business logic - handles all socket lifecycle events
+   */
+  private setupSocketListeners(): void {
+    if (!this.socket) return;
+
+    // Connection established
+    this.socket.on('connect', () => {
+      console.log('[SocketClient] Connected to server');
+      this.reconnectAttempts = 0;
+      this.reconnectDelay = 1000;
+    });
+
+    // Connection error
+    this.socket.on('connect_error', (error) => {
+      console.error('[SocketClient] Connection error:', error.message);
+      
+      if (!this.isManualDisconnect) {
+        this.handleReconnect();
+      }
+    });
+
+    // Disconnection
+    this.socket.on('disconnect', (reason) => {
+      console.log('[SocketClient] Disconnected:', reason);
+      
+      if (!this.isManualDisconnect && reason === 'io server disconnect') {
+        // Server initiated disconnect - attempt reconnect
+        this.handleReconnect();
+      }
+    });
+
+    // Reconnection attempt
+    this.socket.on('reconnect_attempt', (attempt) => {
+      console.log(`[SocketClient] Reconnection attempt ${attempt}`);
+    });
+
+    // Reconnection failed
+    this.socket.on('reconnect_failed', () => {
+      console.error('[SocketClient] Reconnection failed');
+    });
+
+    // Register all custom event handlers
+    this.eventHandlers.forEach((handlers, event) => {
+      handlers.forEach((handler) => {
+        this.socket!.on(event, handler);
+      });
+    });
+  }
+
+  /**
+   * Handle reconnection with exponential backoff
+   * @MX:NOTE Complex business logic - implements exponential backoff algorithm
+   */
+  private handleReconnect(): void {
+    if (this.isManualDisconnect) {
+      return;
+    }
+
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[SocketClient] Max reconnection attempts reached');
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(
+      this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+      this.maxReconnectDelay
+    );
+
+    console.log(
+      `[SocketClient] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+    );
+
+    setTimeout(() => {
+      if (!this.isManualDisconnect && this.currentToken) {
+        try {
+          this.socket = this.createSocket(this.currentToken);
+          this.setupSocketListeners();
+        } catch (error) {
+          console.error('[SocketClient] Reconnection failed:', error);
+          this.handleReconnect();
+        }
+      }
+    }, delay);
+  }
+
+  /**
+   * Clear all event handlers
+   * Call this when unmounting components to prevent memory leaks
+   */
+  public clearAllHandlers(): void {
+    this.eventHandlers.clear();
+    
+    if (this.socket) {
+      this.socket.removeAllListeners();
+    }
   }
 }
+
+// Export singleton instance
+export default SocketClient.getInstance();
+
+// Export class for testing
+export { SocketClient };

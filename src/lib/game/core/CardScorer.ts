@@ -10,38 +10,15 @@
  */
 
 import type { Card, Score, SpecialCombination } from '../types/game.types';
-
-/**
- * Months with red ribbons (Hong-dan)
- * @MX:NOTE: January, March, April, May, September, October have red/pink ribbons
- */
-const HONGDAN_MONTHS: Set<number> = new Set([1, 3, 4, 5, 9, 10]);
-
-/**
- * Months with blue ribbons (Cheong-dan)
- * @MX:NOTE: February, June, August have blue ribbons
- */
-const CHEONGDAN_MONTHS: Set<number> = new Set([2, 6, 8]);
-
-/**
- * Cho-dan month (January Hong-dan)
- */
-const CHODAN_MONTH = 1;
-
-/**
- * Bi-kwang month (December Kwang)
- */
-const BIKWANG_MONTH = 12;
-
-/**
- * Minimum card counts for scoring
- */
-const SCORING_THRESHOLDS = {
-  yulkkut: 5,
-  tti: 5,
-  pi: 10,
-  kwang: 3,
-} as const;
+import {
+  HONGDAN_MONTHS,
+  CHEONGDAN_MONTHS,
+  CHODAN_MONTH,
+  BIKWANG_MONTH,
+  SCORING_THRESHOLDS,
+  KWANG_POINTS,
+  GO_MULTIPLIERS,
+} from '../constants/card.constants';
 
 /**
  * CardScorer class for calculating scores in Mat-go
@@ -130,12 +107,14 @@ export class CardScorer {
     let kwangScore = 0;
     if (counts.kwang >= 3) {
       if (counts.kwang === 5) {
-        kwangScore = 15; // 5 Kwang = 15 points (chongtong-like)
+        kwangScore = KWANG_POINTS.five;
       } else if (counts.kwang === 4) {
-        kwangScore = 4;
+        kwangScore = KWANG_POINTS.four;
       } else {
         // 3 Kwang
-        kwangScore = specials.hasBiKwang ? 2 : 3; // Bi-kwang reduces to 2 points
+        kwangScore = specials.hasBiKwang
+          ? KWANG_POINTS.three - KWANG_POINTS.biKwangPenalty
+          : KWANG_POINTS.three;
       }
     }
 
@@ -169,11 +148,11 @@ export class CardScorer {
    * @returns Multiplier value
    */
   calculateGoMultiplier(goCount: number): number {
-    if (goCount === 0) return 1;
-    if (goCount === 1) return 2;
-    if (goCount === 2) return 2;
-    if (goCount === 3) return 4;
-    if (goCount === 4) return 4;
-    return 15; // 5 or more Go
+    if (goCount === 0) return GO_MULTIPLIERS.zero;
+    if (goCount === 1) return GO_MULTIPLIERS.one;
+    if (goCount === 2) return GO_MULTIPLIERS.two;
+    if (goCount === 3) return GO_MULTIPLIERS.three;
+    if (goCount === 4) return GO_MULTIPLIERS.four;
+    return GO_MULTIPLIERS.five; // 5 or more Go
   }
 }

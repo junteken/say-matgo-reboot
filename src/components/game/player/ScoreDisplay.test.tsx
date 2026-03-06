@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { ScoreDisplay } from './ScoreDisplay'
-import type { Score } from '@/lib/game/types/game.types'
+import type { Score, Penalty, SpecialCombination } from '@/lib/game/types/game.types'
 
 describe('ScoreDisplay Component', () => {
   const mockScore: Score = {
@@ -20,6 +20,19 @@ describe('ScoreDisplay Component', () => {
     pi: 8,
     go: 1,
     total: 18,
+  }
+
+  const mockPenalties: Penalty[] = [
+    { type: 'pi-bak', points: 2, description: 'Pi-bak: Winner has 10+ Pi, loser has 0 Pi' },
+    { type: 'go-bak', points: 1, description: 'Go-bak: Declared Go but stopped without additional points' },
+  ]
+
+  const mockSpecials: SpecialCombination = {
+    hasBiKwang: false,
+    hasChodan: true,
+    hasHongdan: true,
+    hasCheongdan: false,
+    hasSsangpi: false,
   }
 
   describe('Rendering', () => {
@@ -144,6 +157,78 @@ describe('ScoreDisplay Component', () => {
       const { container } = render(<ScoreDisplay score={zeroScore} size="medium" />)
 
       expect(screen.getByText('0점')).toBeInTheDocument()
+    })
+  })
+
+  describe('Penalties Display', () => {
+    it('should display penalties when provided', () => {
+      render(<ScoreDisplay score={mockScore} size="medium" penalties={mockPenalties} />)
+
+      expect(screen.getByText('페널티')).toBeInTheDocument()
+      expect(screen.getByText('피박')).toBeInTheDocument()
+      expect(screen.getByText('광박')).toBeInTheDocument()
+    })
+
+    it('should show penalty point deductions', () => {
+      render(<ScoreDisplay score={mockScore} size="medium" penalties={mockPenalties} />)
+
+      expect(screen.getByText('-2점')).toBeInTheDocument()
+      expect(screen.getByText('-1점')).toBeInTheDocument()
+    })
+
+    it('should not display penalties section when no penalties', () => {
+      render(<ScoreDisplay score={mockScore} size="medium" penalties={[]} />)
+
+      expect(screen.queryByText('페널티')).not.toBeInTheDocument()
+    })
+
+    it('should apply correct styling to penalty badges', () => {
+      const { container } = render(
+        <ScoreDisplay score={mockScore} size="medium" penalties={mockPenalties} />
+      )
+
+      const penaltyBadges = container.querySelectorAll('.bg-red-900\\/30')
+      expect(penaltyBadges.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Special Combinations Display', () => {
+    it('should display active special combinations', () => {
+      render(<ScoreDisplay score={mockScore} size="medium" specials={mockSpecials} />)
+
+      expect(screen.getByText('초단')).toBeInTheDocument()
+      expect(screen.getByText('홍단')).toBeInTheDocument()
+    })
+
+    it('should not display inactive special combinations', () => {
+      render(<ScoreDisplay score={mockScore} size="medium" specials={mockSpecials} />)
+
+      expect(screen.queryByText('비광')).not.toBeInTheDocument()
+      expect(screen.queryByText('청단')).not.toBeInTheDocument()
+    })
+
+    it('should display icons for special combinations', () => {
+      render(<ScoreDisplay score={mockScore} size="medium" specials={mockSpecials} />)
+
+      expect(screen.getByText(/🌸/)).toBeInTheDocument()
+      expect(screen.getByText(/🔴/)).toBeInTheDocument()
+    })
+
+    it('should apply correct colors to special combination badges', () => {
+      const { container } = render(
+        <ScoreDisplay score={mockScore} size="medium" specials={mockSpecials} />
+      )
+
+      const greenBadge = container.querySelector('.text-green-400')
+      const redBadge = container.querySelector('.text-red-400')
+      expect(greenBadge).toBeInTheDocument()
+      expect(redBadge).toBeInTheDocument()
+    })
+
+    it('should not display special combinations section when not provided', () => {
+      render(<ScoreDisplay score={mockScore} size="medium" />)
+
+      expect(screen.queryByText('초단')).not.toBeInTheDocument()
     })
   })
 })

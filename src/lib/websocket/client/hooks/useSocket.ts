@@ -1,119 +1,198 @@
 /**
- * useSocket React Hook
- *
- * @MX:ANCHOR: useSocket hook (fan_in: 3+)
- * @MX:REASON: Primary connection management hook for React components
- * @MX:SPEC: SPEC-NET-001, TASK-018, FR-CM-002
- *
- * Responsibilities:
- * - Auto-connect on mount
- * - Auto-disconnect on unmount
- * - Connection status tracking
- * - Event listener registration helper
- *
- * Reference: SPEC-NET-001, Section 5.3, TASK-018
+ * useSocket - React hook for WebSocket client lifecycle
+ * 
+ * Provides:
+ * - Socket initialization on mount
+ * - Connection lifecycle management
+ * - Automatic cleanup on unmount
+ * - Event listener registration
+ * 
+ * @MX:ANCHOR Public API boundary - React hook for socket initialization
  */
 
-import { useEffect, useRef, useCallback } from 'react'
-import { SocketClient } from '../SocketClient'
-import { useSocketStore } from '../stores/socketStore'
+import { useEffect, useRef, useCallback } from 'react';
+import { useSocketStore } from '../stores/socketStore';
+import socketClient from '../SocketClient';
+import type { ServerToClientEvents } from '../../types/websocket';
 
-/**
- * useSocket hook options
- */
-export interface UseSocketOptions {
-  serverUrl?: string
-  autoConnect?: boolean
+interface UseSocketOptions {
+  /**
+   * Auto-connect on mount
+   * @default true
+   */
+  autoConnect?: boolean;
+  
+  /**
+   * JWT token for authentication
+   */
+  token?: string;
 }
 
 /**
- * useSocket hook return value
- */
-export interface UseSocketReturn {
-  socketClient: SocketClient | null
-  isConnected: boolean
-  connectionState: 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
-  connect: () => void
-  disconnect: () => void
-}
-
-/**
- * useSocket React Hook
- *
- * Manages Socket.IO client connection lifecycle.
- * Auto-connects on mount and auto-disconnects on unmount.
- *
- * @MX:ANCHOR: useSocket - Connection hook (fan_in: 5+)
- * @MX:REASON: Primary connection management hook for React components
- *
+ * React hook for WebSocket client management
+ * 
  * @example
  * ```tsx
- * const { socketClient, isConnected } = useSocket()
+ * function GameComponent() {
+ *   const { isConnected, error } = useSocket({ token: userToken });
+ *   
+ *   if (!isConnected) return <ConnectingSpinner />;
+ *   if (error) return <ErrorMessage error={error} />;
+ *   
+ *   return <GameBoard />;
+ * }
  * ```
  */
-export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
+export function useSocket(options: UseSocketOptions = {}) {
+  const { autoConnect = true, token } = options;
+  
   const {
-    serverUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000',
-    autoConnect = true,
-  } = options
+    connectionState,
+    isAuthenticated,
+    error,
+    setConnectionState,
+    setAuthenticated,
+    setError,
+    setReconnectAttempts,
+    reset,
+  } = useSocketStore();
 
-  const socketClientRef = useRef<SocketClient | null>(null)
-  const connectionState = useSocketStore((state) => state.connectionState)
-  const setConnectionState = useSocketStore((state) => state.setConnectionState)
+  const handlersRef = useRef<Map<keyof ServerToClientEvents, Set<Function>>>(new Map());
 
-  // Initialize socket client
-  useEffect(() => {
-    const client = SocketClient.getInstance(serverUrl)
-    socketClientRef.current = client
-
-    // Listen to connection events
-    const handleConnected = () => setConnectionState('connected')
-    const handleDisconnected = () => setConnectionState('disconnected')
-    const handleConnecting = () => setConnectionState('connecting')
-    const handleReconnecting = () => setConnectionState('reconnecting')
-
-    client.on('connected', handleConnected)
-    client.on('disconnected', handleDisconnected)
-    client.on('connecting', handleConnecting)
-    client.on('reconnect_attempt', handleReconnecting)
-
-    // Auto-connect if enabled
-    if (autoConnect && !client.isConnected()) {
-      client.connect()
+  /**
+   * Connect to WebSocket server
+   */
+  const connect = useCallback(() => {
+    if (!token) {
+      setError('No authentication token provided');
+      return;
     }
+
+    setConnectionState('connecting');
+    socketClient.connect(token);
+  }, [token, setConnectionState, setError]);
+
+  /**
+   * Disconnect from WebSocket server
+   */
+  const disconnect = useCallback(() => {
+    socketClient.disconnect();
+    reset();
+  }, [reset]);
+
+  /**
+   * Register event listener
+   * Automatically cleaned up on unmount
+   */
+  const on = useCallback(<K extends keyof ServerToClientEvents>(
+    event: K,
+    handler: ServerToClientEvents[K]
+  ) => {
+    if (!handlersRef.current.has(event)) {
+      handlersRef.current.set(event, new Set());
+    }
+    handlersRef.current.get(event)!.add(handler);
+    socketClient.on(event, handler);
+  }, []);
+
+  /**
+   * Unregister event listener
+   */
+  const off = useCallback(<K extends keyof ServerToClientEvents>(
+    event: K,
+    handler: ServerToClientEvents[K]
+  ) => {
+    const handlers = handlersRef.current.get(event);
+    if (handlers) {
+      handlers.delete(handler as any);
+      if (handlers.size === 0) {
+        handlersRef.current.delete(event);
+      }
+    }
+    socketClient.off(event, handler);
+  }, []);
+
+  /**
+   * Emit event to server
+   */
+  const emit = useCallback(<K extends keyof ServerToClientEvents>(
+    ...args: any[]
+  ) => {
+    // @ts-ignore - Dynamic event emission
+    socketClient.emit(...args);
+  }, []);
+
+  // Auto-connect on mount
+  useEffect(() => {
+    if (autoConnect && token) {
+      connect();
+    }
+  }, [autoConnect, token, connect]);
+
+  // Setup core socket event listeners
+  useEffect(() => {
+    const handleConnect = () => {
+      setConnectionState('connected');
+      setAuthenticated(true);
+      setError(null);
+    };
+
+    const handleDisconnect = () => {
+      setConnectionState('disconnected');
+      setAuthenticated(false);
+    };
+
+    const handleError = (errorMessage: string) => {
+      setError(errorMessage);
+      setConnectionState('error');
+    };
+
+    const handleReconnectAttempt = (attempt: number) => {
+      setReconnectAttempts(attempt);
+      setConnectionState('connecting');
+    };
+
+    // Register core event listeners
+    socketClient.on('connect', handleConnect);
+    socketClient.on('disconnect', handleDisconnect);
+    socketClient.on('error', handleError);
+    socketClient.on('reconnect_attempt', handleReconnectAttempt);
 
     // Cleanup on unmount
     return () => {
-      client.off('connected', handleConnected)
-      client.off('disconnected', handleDisconnected)
-      client.off('connecting', handleConnecting)
-      client.off('reconnect_attempt', handleReconnecting)
+      socketClient.off('connect', handleConnect);
+      socketClient.off('disconnect', handleDisconnect);
+      socketClient.off('error', handleError);
+      socketClient.off('reconnect_attempt', handleReconnectAttempt);
 
-      // Note: Don't disconnect on unmount to allow other components to use the socket
-    }
-  }, [serverUrl, autoConnect, setConnectionState])
-
-  // Connect function
-  const connect = useCallback(() => {
-    const client = socketClientRef.current
-    if (client) {
-      client.connect()
-    }
-  }, [])
-
-  // Disconnect function
-  const disconnect = useCallback(() => {
-    const client = socketClientRef.current
-    if (client) {
-      client.disconnect()
-    }
-  }, [])
+      // Clean up all registered event handlers
+      handlersRef.current.forEach((handlers, event) => {
+        handlers.forEach((handler) => {
+          socketClient.off(event, handler as any);
+        });
+      });
+      handlersRef.current.clear();
+    };
+  }, [setConnectionState, setAuthenticated, setError, setReconnectAttempts]);
 
   return {
-    socketClient: socketClientRef.current,
+    // State
     isConnected: connectionState === 'connected',
+    isConnecting: connectionState === 'connecting',
+    isAuthenticated,
+    error,
     connectionState,
+
+    // Actions
     connect,
     disconnect,
-  }
+    on,
+    off,
+    emit,
+
+    // Raw socket (for advanced usage)
+    socket: socketClient.getSocket(),
+  };
 }
+
+export default useSocket;

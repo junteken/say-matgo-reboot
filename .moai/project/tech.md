@@ -417,8 +417,58 @@ export const getGameSession = async (sessionId: string) => {
 - **상태 동기화**: 모든 클라이언트 간 상태 일치
 - **치트 방지**: 서버 측 로직 검증
 
+## 🚀 배포 아키텍처
+
+### Vercel + Railway 통합 배포
+
+```
+┌─────────────────┐    ┌─────────────────┐
+│   Vercel        │    │   Railway       │
+│   (프론트엔드)  │    │   (백엔드)      │
+│                 │    │                 │
+│ - Next.js 14    │    │ - Socket.IO     │
+│ - React UI      │    │ - Redis         │
+│ - 정적 자산     │    │ - JWT 인증      │
+└─────────────────┘    └─────────────────┘
+```
+
+### 환경 변수 구성
+
+**.env.local (프론트엔드)**
+```bash
+NEXT_PUBLIC_API_URL=https://your-railway-app.railway.app
+NEXT_PUBLIC_SOCKET_URL=https://your-railway-app.railway.app
+```
+
+**Railway 환경 변수**
+```bash
+# Railway Dashboard > Variables
+DATABASE_URL=postgresql://user:password@host:port/database
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=your-secret-key
+NEXTAUTH_URL=https://your-domain.vercel.app
+```
+
+---
+
+### 📊 성능 지표
+
+- **첫 화면 로딩 시간**: < 2초
+- **WebSocket 지연 시간**: < 100ms
+- **API 응답 시간**: < 200ms
+- **실시간 동기화**: 60fps
+- **모바일 성능**: 85%+ FPS
+
+### 🔧 모니터링
+
+- **Vercel Analytics**: 프론트엔드 모니터링
+- **Railway Logs**: 백엔드 로그 분석
+- **Redis Monitor**: 실시간 데이터 모니터링
+- **Uptime Robot**: 서비스 가용성 모니터링
+
 ---
 
 *문서 생성일: 2026-02-27*
-*최종 업데이트: 2026-02-27*
-*버전: 1.0.0*
+*최종 업데이트: 2026-03-06*
+*버전: 1.1.0*
+*배포 플랫폼: Vercel + Railway*

@@ -1,27 +1,31 @@
-# @MX:NOTE: Railway deployment configuration for WebSocket server
+# Railway deployment configuration for WebSocket server
 
 [build]
-# @MX:NOTE: Build command for TypeScript compilation
+# Build command for TypeScript compilation
 build = "npm run build"
 
-# @MX:NOTE: Start command for WebSocket server
-start = "npm start"
-
-# @MX:NOTE: Railway automatically sets PORT environment variable
-# The WebSocket server reads process.env.PORT
+# Start command for WebSocket server
+start = "node dist/server/index.js"
 
 [deploy]
-# @MX:NOTE: Number of instances for horizontal scaling
+# Number of instances for horizontal scaling
 # Railway auto-scales based on load
-numreplicas = 1
+numReplicas = 1
 
-# @MX:NOTE: Health check endpoint (will be implemented in TASK-002)
-# healthcheckPath = "/health"
+# Health check endpoint
+healthcheckPath = "/health"
+healthcheckTimeout = 100
 
-# @MX:NOTE: Restart policy for resilience
-restart_policy_type = "ON_FAILURE"
+# Restart policy for resilience
+restartPolicyType = "ON_FAILURE"
 
-# @MX:NOTE: Railway service name
-# Change this to your preferred service name
-# [service.name]
-# value = "say-matgo-websocket"
+# Resource allocation
+[deploy.resources]
+memory = "512"
+cpu = "0.5"
+
+[deploy.healthcheck]
+# HTTP health check
+path = "/health"
+timeout = 100
+interval = 30

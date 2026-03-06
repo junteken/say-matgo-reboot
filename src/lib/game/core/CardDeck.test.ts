@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CardDeck } from './CardDeck';
 import type { Card } from '../types/game.types';
+import { TOTAL_CARDS } from '../constants/card.constants';
 
 describe('CardDeck', () => {
   let deck: CardDeck;
@@ -17,9 +18,9 @@ describe('CardDeck', () => {
   });
 
   describe('create()', () => {
-    it('should create a standard 48-card deck', () => {
+    it('should create a standard 48-card deck (UR-GAME-001)', () => {
       deck.create();
-      expect(deck.remaining()).toBe(48);
+      expect(deck.remaining()).toBe(TOTAL_CARDS);
     });
 
     it('should create cards with unique IDs', () => {
@@ -30,7 +31,7 @@ describe('CardDeck', () => {
       }
       const ids = dealt.map((c) => c.id);
       const uniqueIds = new Set(ids);
-      expect(uniqueIds.size).toBe(48);
+      expect(uniqueIds.size).toBe(TOTAL_CARDS);
     });
 
     it('should create cards for all 12 months', () => {

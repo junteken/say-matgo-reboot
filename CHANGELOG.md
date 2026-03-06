@@ -4,11 +4,106 @@
 
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)을 따릅니다.
 
-## [1.0.3] - 2026-03-05
+## [1.1.0] - 2026-03-06
 
 ### 추가된 기능 (Added)
 
-#### 🎮 UI 컴포넌트 렌더링 시스템 (SPEC-UI-001) - 85% 완료
+#### 🎮 전체 프로젝트 완료 (3/3 SPEC 100% 완료)
+
+**SPEC-GAME-001**: 게임 로직 코어 (100% 완료)
+- CardDeck: 48장 화투 카드 덱 완전 구현
+- CardMatcher: 카드 매칭 및 쪽(쪼그) 판정 시스템
+- CardScorer: 점수 계산 및 특수 조합 확인
+- GoStopSystem: 고/스톱 선언 및 배수 관리
+- PenaltyRules: 4가지 페널티 규칙 (피박, 광박, 멍박, 고박)
+- 133개 테스트 통과, 85%+ 커버리지 달성
+
+**SPEC-UI-001**: UI 컴포넌트 시스템 (100% 완료)
+- 19개 React 컴포넌트 완전 구현
+- 게임 보드, 카드, 플레이어 영역, 애니메이션 시스템
+- 반응형 디자인 (모바일, 태블릿, 데스크톱)
+- 498개 테스트 통과, TDD 개발 방식 적용
+- 애니메이션: Framer Motion 기반 5개 전문 컴포넌트
+
+**SPEC-NET-001**: WebSocket 실시간 멀티플레이어 (100% 완료)
+- Socket.IO 서버 구현 with JWT 인증
+- 방(Room) 관리 시스템 및 게임 상태 동기화
+- 클라이언트: 싱글턴 패턴, Zustand 상태 관리
+- React 훅: useSocket, useRoomEvents
+- 16개 파일 생성 (8 서버 + 8 클라이언트)
+- 재연결 시스템 및 하트비트 모니터링
+
+#### 🚀 배포 준비 완료
+
+- **Vercel 배포 구성**: 프론트엔드 배포용 vercel.json 생성
+- **Railway 배포 구성**: 백엔드 WebSocket 서버용 Dockerfile 및 railway.toml 생성
+- **환경 변수 템플릿**: .env.example 파일로 모든 필수 환경 변수 문서화
+- **CI/CD 파이프라인**: GitHub Actions 워크플로우 생성 (테스트, 빌드, 배포 자동화)
+- **배포 문서**: DEPLOYMENT.md, DEPLOYMENT_GUIDE.md, DEPLOYMENT_SUMMARY.md 생성
+- **WebSocket 테스트 페이지**: /test/websocket.html 페이지로 연결 테스트 지원
+
+**생성된 배포 파일:**
+- `/vercel.json`: Vercel 빌드 및 배포 설정
+- `/Dockerfile`: Railway 다중 스테이지 Dockerfile
+- `/railway.toml`: Railway 서비스 구성
+- `/.env.example`: 환경 변수 템플릿
+- `/.github/workflows/deploy.yml`: CI/CD 파이프라인
+- `/DEPLOYMENT.md`: 상세 배포 가이드
+- `/DEPLOYMENT_GUIDE.md`: 단계별 배포 시나리오
+- `/DEPLOYMENT_SUMMARY.md`: 배포 준비 완료 보고서
+- `/public/test/websocket.html`: WebSocket 연결 테스트 페이지
+
+**package.json 스크립트 추가:**
+- `dev:ws`: WebSocket 서버 개발 모드
+- `build:ws`: WebSocket 서버 빌드
+- `start:ws`: WebSocket 서버 시작
+
+#### 📚 문서화 시스템
+
+- **API 문서**: 게임 로직 컴포넌트 API 문서 완성
+- **아키텍처 다이어그램**: 시스템 구조 시각화
+- **사용자 매뉴얼**: 개발자 및 사용자를 위한 가이드
+- **배포 문서**: Vercel + Railway/Fly.io 배포 가이드
+
+### 기술적 개선 (Improved)
+
+- **모듈화 아키텍처**: 독립적인 게임 로직, UI, 네트워크 모듈
+- **타입 안정성**: TypeScript를 통한 전체 시스템 타입 검증
+- **성능 최적화**: React.memo, useMemo, useCallback 적용
+- **테스트 시스템**: 단위 테스트, 통합 테스트, E2E 테스트
+- **보안 강화**: JWT 인증, 입력 검증, 세션 관리
+
+### 배포 옵션
+
+#### Vercel 배포 (프론트엔드)
+```bash
+# Vercel CLI 설치
+npm install -g @vercel/cli
+
+# 로그인 및 연결
+vercel login
+vercel link
+
+# 배포
+vercel --prod
+```
+
+#### Railway 배포 (백엔드)
+```bash
+# Railway CLI 설치
+npm install -g @railway/cli
+
+# 로그인 및 연결
+railway login
+railway link
+
+# 배포
+railway up
+```
+
+---
+
+## [1.0.3] - 2026-03-05
 
 **Phase 0: 인프라 설정** ✅ (7개 테스트)
 - Next.js 16, React 19, Tailwind CSS, Framer Motion 설치
